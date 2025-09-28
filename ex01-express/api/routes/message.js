@@ -1,36 +1,60 @@
-import { v4 as uuidv4 } from "uuid";
 import { Router } from "express";
 
 const router = Router();
 
-router.get("/", (req, res) => {
-  return res.send(Object.values(req.context.models.messages));
+// GET all messages
+router.get("/", async (req, res) => {
+  try {
+    const messages = await req.context.models.Message.findAll();
+    return res.status(200).json(messages);
+  } catch (error) {
+    return res.status(500).json({ error: "Erro interno do servidor" });
+  }
 });
 
-router.get("/:messageId", (req, res) => {
-  return res.send(req.context.models.messages[req.params.messageId]);
+// GET a message by ID
+router.get("/:messageId", async (req, res) => {
+  try {
+    const message = await req.context.models.Message.findByPk(req.params.messageId);
+    if (!message) {
+      return res.status(404).json({ error: "Mensagem não encontrada" });
+    }
+    return res.status(200).json(message);
+  } catch (error) {
+    return res.status(500).json({ error: "Erro interno do servidor" });
+  }
 });
 
-router.post("/", (req, res) => {
-  const id = uuidv4();
-  const message = {
-    id,
-    text: req.body.text,
-    userId: req.context.me.id,
-  };
-
-  req.context.models.messages[id] = message;
-
-  return res.send(message);
+// POST a new message
+router.post("/", async (req, res) => {
+  try {
+    const newMessage = await req.context.models.Message.create({
+      text: req.body.text,
+      userId: req.context.me.id,
+    });
+    // Mensagem de sucesso para a criação
+    return res.status(201).json({ 
+      message: "Mensagem criada com sucesso!",
+      data: newMessage 
+    });
+  } catch (error) {
+    return res.status(500).json({ error: "Erro interno do servidor" });
+  }
 });
 
-router.delete("/:messageId", (req, res) => {
-  const { [req.params.messageId]: message, ...otherMessages } =
-    req.context.models.messages;
-
-  req.context.models.messages = otherMessages;
-
-  return res.send(message);
+// DELETE a message by ID
+router.delete("/:messageId", async (req, res) => {
+  try {
+    const result = await req.context.models.Message.destroy({
+      where: { id: req.params.messageId },
+    });
+    if (result === 0) {
+      return res.status(404).json({ error: "Mensagem não encontrada" });
+    }
+    return res.status(204).send();
+  } catch (error) {
+    return res.status(500).json({ error: "Erro interno do servidor" });
+  }
 });
 
 export default router;
