@@ -3,74 +3,61 @@ import { Router } from "express";
 const router = Router();
 
 export default (models) => {
-  // LISTAR todas as mensagens - Status 200
+  // LISTAR todas as mensagens
   router.get("/", async (req, res) => {
     try {
       const messages = await models.Message.findAll({ include: models.User });
-      res.status(200).json(messages);
+      res.json(messages);
     } catch (err) {
       res.status(500).json({ error: "Erro interno do servidor" });
     }
   });
 
-  // BUSCAR mensagem por ID - Status 200 ou 404
+  // BUSCAR mensagem por ID
   router.get("/:id", async (req, res) => {
     try {
       const message = await models.Message.findByPk(req.params.id, { include: models.User });
-      if (!message) {
-        return res.status(404).json({ error: "Mensagem não encontrada" });
-      }
-      res.status(200).json(message);
+      if (!message) return res.status(404).json({ error: "Mensagem não encontrada" });
+      res.json(message);
     } catch (err) {
       res.status(500).json({ error: "Erro interno do servidor" });
     }
   });
 
-  // CRIAR nova mensagem - Status 201 ou 400
+  // CRIAR nova mensagem
   router.post("/", async (req, res) => {
     try {
-      const { text, userId } = req.body;
-
-      if (!text || !userId) {
-        return res.status(400).json({ error: "O texto da mensagem e o ID do usuário são obrigatórios" });
-      }
-
       const message = await models.Message.create({
-        text,
-        userId,
+        text: req.body.text,
+        userId: req.context.me.id,
       });
-
       res.status(201).json(message);
     } catch (err) {
       res.status(500).json({ error: "Erro interno do servidor" });
     }
   });
 
-  // ATUALIZAR mensagem - Status 200 ou 404
+  // ATUALIZAR mensagem
   router.put("/:id", async (req, res) => {
     try {
       const message = await models.Message.findByPk(req.params.id);
-      if (!message) {
-        return res.status(404).json({ error: "Mensagem não encontrada" });
-      }
+      if (!message) return res.status(404).json({ error: "Mensagem não encontrada" });
 
       await message.update({ text: req.body.text });
-      res.status(200).json(message);
+      res.json(message);
     } catch (err) {
       res.status(500).json({ error: "Erro interno do servidor" });
     }
   });
 
-  // DELETAR mensagem - Status 204 ou 404
+  // DELETAR mensagem
   router.delete("/:id", async (req, res) => {
     try {
       const message = await models.Message.findByPk(req.params.id);
-      if (!message) {
-        return res.status(404).json({ error: "Mensagem não encontrada" });
-      }
+      if (!message) return res.status(404).json({ error: "Mensagem não encontrada" });
 
       await message.destroy();
-      res.status(204).send();
+      res.status(204).send(); // sucesso sem conteúdo
     } catch (err) {
       res.status(500).json({ error: "Erro interno do servidor" });
     }
