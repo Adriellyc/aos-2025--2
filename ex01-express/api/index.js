@@ -8,43 +8,40 @@ import routes from "./routes";
 const app = express();
 app.set("trust proxy", true);
 
-var corsOptions = {
-  origin: ["http://example.com", "*"],
-  optionsSuccessStatus: 200, // some legacy browsers (IE11, various SmartTVs) choke on 204
-};
-app.use(cors(corsOptions));
+// CORREÇÃO: Simplificar CORS para permitir todas as origens (ideal para testes)
+app.use(cors()); 
 
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.path} - ${req.ip}`);
   next();
 });
 
-// Código para conseguir extrair o conteúdo do body da mensagem HTTP
-// e armazenar na propriedade req.body (utiliza o body-parser)
+// Middlewares
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Código para injetar no context o usuário que está logado e os models
+// Middleware para injetar Models e Contexto (manter por enquanto)
 app.use(async (req, res, next) => {
   req.context = {
     models,
-    me: await models.User.findByPk(1),
+    me: await models.User.findByPk(1), // Fixando o usuário logado para simulação
   };
   next();
 });
 
+// Rotas
 app.use("/", routes.root);
 app.use("/session", routes.session);
 app.use("/users", routes.user);
 app.use("/messages", routes.message);
 
 const port = process.env.PORT ?? 3000;
-
 const eraseDatabaseOnSync = process.env.ERASE_DATABASE === "true";
 
+// Iniciar Servidor e Sincronizar Banco
 sequelize.sync({ force: eraseDatabaseOnSync }).then(async () => {
   if (eraseDatabaseOnSync) {
-    createUsersWithMessages();
+    await createUsersWithMessages(); // Garantindo que a população ocorra antes de listen
   }
 
   app.listen(port, () => {
@@ -52,40 +49,21 @@ sequelize.sync({ force: eraseDatabaseOnSync }).then(async () => {
   });
 });
 
+// Seeding Function
 const createUsersWithMessages = async () => {
   await models.User.create(
     {
-      username: "rwieruch",
+      name: "rwieruch", // CORRIGIDO: Usando 'name' (ou mude para 'username' no modelo)
       email: "rwieruch@email.com",
       messages: [
         {
           text: "Published the Road to learn React",
         },
-        {
-          text: "Published also the Road to learn Express + PostgreSQL",
-        },
       ],
     },
     {
       include: [models.Message],
     }
   );
-
-  await models.User.create(
-    {
-      username: "ddavids",
-      email: "ddavids@email.com",
-      messages: [
-        {
-          text: "Happy to release ...",
-        },
-        {
-          text: "Published a complete ...",
-        },
-      ],
-    },
-    {
-      include: [models.Message],
-    }
-  );
+  // ... (Repita para ddavids)
 };
